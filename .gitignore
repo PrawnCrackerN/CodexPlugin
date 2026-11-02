@@ -1,0 +1,40 @@
+# Local tooling and generated caches
+.DS_Store
+node_modules/
+__pycache__/
+*.py[cod]
+*.tmp
+*.pid
+*.sock
+*.log
+playwright-report/
+test-results/
+
+# Credentials and local account stores
+.env
+.env.*
+!.env.example
+**/auth.json
+**/tokens.json
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+
+# Installation receipts, backups and durable reset journals are machine-local.
+**/install-receipt*.json
+**/avatar-customization.json*
+**/reset-operations.json*
+**/avatar-backups/
+**/backup-manifest.json
+**/update-settings.json
+**/startup-helper/state.json
+work/avatar-quota/original-update-settings.json
+
+# Never publish real account/usage query output or local screenshots.
+**/*live-data*.json
+**/*usage-snapshot*.json
+**/*account-snapshot*.json
+**/screenshots/
+
+# Keep source baselines and outputs/CodexAvatarQuota/package.json tracked.

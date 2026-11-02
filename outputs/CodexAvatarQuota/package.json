@@ -1,0 +1,17 @@
+{
+  "name": "codex-avatar-quota",
+  "version": "0.9.4-avatar-meteor.3",
+  "private": true,
+  "baseVersion": "0.9.4",
+  "rendererVersion": 1049,
+  "baseHashes": {
+    "agent.cjs": "b39c4183eda8cc908abc3adeee3af42ed5132c347f2177513f1063925f5cb700",
+    "manage.cjs": "5248a7b237ab196b6a5e30037cad3fcc8a979c82f3855f990c17d5164e6c011f",
+    "reset-controller.cjs": "f6ecdb4de014e32ca7b6b707a3cb23510ac1212522dec80a4b2feab5912655c0"
+  },
+  "payloadHashes": {
+    "agent.cjs": "1da63f101ed39366e87cf398b1daedf0529aec5ed1dd00e86feb0857681a82a7",
+    "manage.cjs": "d084c8b509fd1f3254027776cb0f4b9baada2037e98e9daeba18a761edba5043",
+    "reset-controller.cjs": "d865939543ea02d826cafd6967d7e4dd5a5d60d0e10a5b965fe4b4951ef74d8f"
+  }
+}

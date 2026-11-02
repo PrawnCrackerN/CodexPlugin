@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Avatar quota local fixture</title>
+<style>
+html{color-scheme:light dark;background:light-dark(#fafafa,#161616);color:light-dark(#252525,#eee);font-family:system-ui,sans-serif}body{margin:0}nav{position:fixed;inset:0 auto 0 0;width:64px;display:flex;flex-direction:column;align-items:center;border-right:1px solid light-dark(#ddd,#383838);background:light-dark(#f2f2f2,#202020)}nav>div:first-child{padding-top:18px}nav>div:nth-child(2){flex:1}nav footer{display:flex;flex-direction:column;gap:16px;padding-bottom:16px}nav button{border:0;background:transparent;color:inherit;width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center}nav button:hover{background:light-dark(#e6e6e6,#333)}.relative.isolate.inline-flex{position:relative;isolation:isolate;display:inline-flex;width:30px;height:30px;border-radius:50%;align-items:center;justify-content:center;background:#dceaff;color:#4c78b8}.relative.isolate.inline-flex span{font-size:13px}main{margin-left:400px;padding:26px;max-width:650px}h1{font-size:20px}p{font-size:13px;color:light-dark(#666,#aaa)}.controls{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}main button{font:inherit;padding:8px 12px;border:1px solid light-dark(#ccc,#555);border-radius:8px;background:light-dark(#fff,#292929);color:inherit}pre{font-size:12px;white-space:pre-wrap;line-height:1.7;background:light-dark(#eee,#242424);padding:15px;border-radius:8px}.note{font-size:12px}#native-menu{position:fixed;bottom:70px;left:72px;padding:20px;background:light-dark(#fff,#292929);border:1px solid light-dark(#ccc,#555);border-radius:12px;z-index:2147483100}#native-menu[hidden]{display:none} @media(max-width:700px){main{margin-left:80px;padding:18px}#results{margin-top:320px}}
+</style></head><body>
+<nav data-app-navigation-rail aria-label="Mock Codex navigation">
+ <div>◉</div><div></div><footer>
+ <button type="button" aria-label="Help">?</button>
+ <button id="profile" type="button" aria-label="Open profile menu" aria-expanded="false"><span class="relative isolate inline-flex"><span>S</span></span></button>
+ </footer>
+</nav>
+<div id="native-menu" hidden>原生账户菜单仍可打开</div>
+<main><h1>账户头像额度 · 本地模拟测试</h1><p>本页只使用模拟账户和可见测试控件，不连接真实 Codex 窗口。</p>
+<div class="controls"><button data-scenario="success">成功场景</button><button data-scenario="unconfirmed">待确认场景</button><button data-scenario="notSubmitted">确定未提交</button><button data-scenario="unknown">卡数未知</button><button data-scenario="generic">无卡片详情</button><button data-scenario="identity">身份未知</button></div>
+<div class="controls"><button id="regression">日期与挂载回归（不发送重置）</button><button id="open">展开真实 renderer</button><button id="short">400ms 短按断言</button><button id="long">1450ms 长按断言</button><button id="switch">按住途中切换账户</button><button id="refresh">待确认核对断言</button><button id="cleanup">销毁</button></div>
+<pre id="results" aria-live="polite">只连接本页 mock bridge；不访问 Codex、账户或真实重置接口。</pre><p class="note">本地假账户 A/B。短按不发送；成功后模拟 read 返回 87% 和 0 张。待确认只能刷新，绝不重复 consume。</p>
+</main>
+<script src="/renderer.js"></script>
+<script>
+const results=document.getElementById('results'),profile=document.getElementById('profile'),nativeMenu=document.getElementById('native-menu');
+let scenario='success',state,actions=[],seen=new Set(),generation=0;
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+function snapshot(){return {percent:state.q,usedPercent:100-state.q,windowLabel:'周',planType:'prolite',resetsAt:Math.floor(Date.now()/1000)+5*86400,windowDurationMins:10080,updatedAt:Date.now(),stale:false,accountKey:state.accountKey,resetCredits:{availableCount:state.count,cards:state.cards,detailsComplete:state.complete},resetOperation:state.op};}
+function report(note){results.textContent=note+'\n'+JSON.stringify({scenario,actions,status:window.__codexUsageBadge?.status(),snapshot:snapshot()},null,2);}
+function push(){window.__codexUsageBadge.update(snapshot());}
+function reset(){generation++;window.__codexUsageBadge?.destroy();actions=[];seen.clear();state={q:39,count:scenario==='unknown'?null:1,accountKey:scenario==='identity'?null:'fixture-account-A',cards:scenario==='generic'||scenario==='unknown'?[]:[{id:'fixture-credit-A',expiresAt:Math.floor(Date.now()/1000)+6*86400}],complete:scenario!=='generic',op:null};profile.setAttribute('aria-expanded','false');nativeMenu.hidden=true;installUsageBadge();push();report('已重建隔离测试场景');}
+window.__codexUsageBadgeAction=raw=>{
+ const request=JSON.parse(raw),g=generation;actions.push(request);report('mock bridge 收到 '+request.type);
+ if(request.accountKey!==state.accountKey)throw Error('fixture account changed');
+ if(request.type==='refresh'){setTimeout(()=>{if(g!==generation)return;push();window.__codexUsageBadge.resetResult(request.requestId,{outcome:'unconfirmed',refreshed:true});report('仅核对，无再次消费');},150);return;}
+ if(seen.has(request.requestId))throw Error('duplicate request');seen.add(request.requestId);state.op={requestId:request.requestId,accountKey:state.accountKey,status:'pending'};push();
+ setTimeout(()=>{if(g!==generation)return;
+  if(scenario==='unconfirmed'){state.op={...state.op,status:'unconfirmed',outcome:'unconfirmed',refreshed:false};push();window.__codexUsageBadge.resetResult(request.requestId,{outcome:'unconfirmed',refreshed:false});}
+  else if(scenario==='notSubmitted'){state.op={...state.op,status:'complete',outcome:'notSubmitted',submitted:false,refreshed:false};push();window.__codexUsageBadge.resetResult(request.requestId,{outcome:'notSubmitted',refreshed:false});}
+  else{state.q=87;state.count=0;state.cards=[];state.op={...state.op,status:'complete',outcome:'reset',refreshed:true};push();window.__codexUsageBadge.resetResult(request.requestId,{outcome:'reset',refreshed:true});}
+  report('mock controller 已返回结果');
+ },300);
+};
+async function openCapsule(){
+ const badge=window.__codexUsageBadge;if(badge.status().phase!=='open'){profile.blur();document.dispatchEvent(new PointerEvent('pointermove',{clientX:innerWidth-5,clientY:5,bubbles:true}));document.dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',bubbles:true}));profile.focus();await sleep(2600);}
+ const token=document.querySelector('.mq-tokens button');if(!token)throw Error('场景无卡券');token.focus();token.click();await sleep(30);return document.querySelector('.mq-ribbon');
+}
+function press(button,id=91){button.dispatchEvent(new PointerEvent('pointerdown',{pointerId:id,isPrimary:true,button:0,buttons:1,clientX:button.getBoundingClientRect().x+100,clientY:button.getBoundingClientRect().y+30,bubbles:true}));}
+function release(id=91){document.dispatchEvent(new PointerEvent('pointerup',{pointerId:id,isPrimary:true,button:0,buttons:0,bubbles:true}));}
+async function testHold(ms){const button=await openCapsule(),before=actions.filter(x=>x.type==='reset').length;press(button);await sleep(ms);release();await sleep(500);const sent=actions.filter(x=>x.type==='reset').length-before,edge=document.querySelector('.mq-ribbon-edge path');if(ms<1200&&(sent!==0||edge.style.opacity!=='0'||edge.style.strokeDashoffset!=='100'))throw Error('短按未完全取消');if(ms>=1200&&sent!==1)throw Error('长按没有且仅有一次提交');report('PASS '+ms+'ms：reset 请求 '+sent+' 次，边线 '+edge.style.opacity+'/'+edge.style.strokeDashoffset);}
+function run(fn){return()=>Promise.resolve().then(fn).catch(e=>report('FAIL '+e.message));}
+document.querySelectorAll('[data-scenario]').forEach(b=>b.onclick=()=>{scenario=b.dataset.scenario;reset();});
+document.getElementById('open').onclick=run(openCapsule);document.getElementById('short').onclick=run(()=>testHold(400));document.getElementById('long').onclick=run(()=>testHold(1450));
+document.getElementById('switch').onclick=run(async()=>{const button=await openCapsule();press(button);await sleep(400);state.accountKey='fixture-account-B';state.q=63;state.op=null;state.cards=[{id:'fixture-credit-B',expiresAt:null}];push();release();await sleep(1000);if(actions.length)throw Error('账户切换后仍发送请求');report('PASS 账户切换已取消长按');});
+document.getElementById('refresh').onclick=run(async()=>{const before=actions.filter(x=>x.type==='reset').length,button=await openCapsule();button.click();await sleep(300);if(actions.filter(x=>x.type==='reset').length!==before||actions.at(-1)?.type!=='refresh')throw Error('核对不是纯刷新');report('PASS 核对只发送 refresh');});
+document.getElementById('regression').onclick=run(async()=>{
+ const log=[],assert=(ok,message)=>{if(!ok)throw Error(message);log.push('PASS '+message);};
+ scenario='success';reset();state.cards=[{id:'fixture-credit-A',expiresAt:null,expiryStatus:'unknown'}];push();await openCapsule();
+ const trigger=document.querySelector('.mq-tokens button'),popover=document.querySelector('.mq-token-popover');
+ assert(document.querySelector('.mq-ribbon-title').textContent==='暂未获取到期时间','未知日期文案');
+ state.cards=[{id:'fixture-credit-A',expiresAt:Math.floor(Date.now()/1000)+6*86400,expiryStatus:'dated',expirySource:'live'}];push();await sleep(150);
+ assert(!popover.hidden&&document.querySelector('.mq-ribbon-title').textContent.endsWith('到期'),'同 ID 日期补齐无需重开胶囊');
+ assert(document.querySelector('.mq-tokens button')===trigger&&document.activeElement===trigger,'日期更新保留原按钮与键盘焦点');
+ state.cards=[{id:'fixture-credit-A',expiresAt:null,expiryStatus:'noExpiry',expirySource:'live'}];push();
+ assert(document.querySelector('.mq-ribbon-title').textContent==='无到期限制','显式无期限与未知分离');
+ assert(actions.length===0,'日期更新没有重置请求');
+ scenario='generic';reset();const capsule=await openCapsule();press(capsule);await sleep(350);
+ state.cards=[{id:'fixture-credit-A',expiresAt:Math.floor(Date.now()/1000)+6*86400,expiryStatus:'dated'}];state.complete=true;push();await sleep(100);release();await sleep(1200);
+ const edge=document.querySelector('.mq-ribbon-edge path');
+ assert(actions.length===0&&edge.style.opacity==='0'&&edge.style.strokeDashoffset==='100','generic 补齐真实 ID 取消旧长按并清零');
+ assert(!document.querySelector('.mq-token-popover').hidden&&document.querySelector('.mq-ribbon-title').textContent.endsWith('到期'),'generic 补齐后显示真实日期');
+ const nav=document.querySelector('nav[data-app-navigation-rail]');nav.style.display='none';scenario='success';reset();
+ assert(!window.__codexUsageBadge.status().anchorFound,'延迟锚点起初尚未发现');
+ await sleep(150);nav.style.display='';await sleep(1300);
+ assert(window.__codexUsageBadge.status().placed,'锚点显示后无 API update 也能挂载');
+ assert(actions.length===0,'挂载恢复没有重置请求');
+ report(log.join('\n')+'\n1049 回归全部通过');
+});
+document.getElementById('cleanup').onclick=()=>{window.__codexUsageBadge.destroy();report('已销毁 renderer');};
+profile.addEventListener('click',()=>{nativeMenu.hidden=!nativeMenu.hidden;profile.setAttribute('aria-expanded',String(!nativeMenu.hidden));});
+reset();
+</script></body></html>
